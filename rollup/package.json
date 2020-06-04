@@ -1,0 +1,4 @@
+{
+  "name": "static-css-extract/rollup",
+  "main": "../dist/rollup.cjs"
+}

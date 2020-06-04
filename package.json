@@ -1,0 +1,43 @@
+{
+  "name": "static-css-extract",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "exports": {
+    "./rollup": {
+      "require": "./dist/rollup.cjs",
+      "import": "./dist/rollup.mjs"
+    }
+  },
+  "scripts": {
+    "build:watch": "rollup -c rollup.config.js --watch",
+    "build": "rollup -c rollup.config.js",
+    "type": "tsc",
+    "type:watch": "tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "devDependencies": {
+    "@babel/core": "7.10.2",
+    "@babel/preset-env": "7.10.2",
+    "@babel/preset-typescript": "7.10.1",
+    "@rollup/plugin-node-resolve": "8.0.0",
+    "@types/es-module-lexer": "0.3.0",
+    "@types/jest": "25.2.3",
+    "acorn": "7.2.0",
+    "babel-jest": "26.0.1",
+    "jest": "^26.0.1",
+    "magic-string": "0.25.7",
+    "prettier": "2.0.5",
+    "rollup": "2.10.9",
+    "rollup-plugin-esbuild": "1.4.1",
+    "typescript": "3.9.3"
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "all"
+  },
+  "dependencies": {
+    "es-module-lexer": "0.3.19"
+  }
+}
