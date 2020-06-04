@@ -87,7 +87,9 @@ function _interopRequireDefault(obj: any) {
   return obj && obj.__esModule ? obj : { default: obj }
 }
 
-/** Runs the given code string. Code cannot use imports, must be shimmed. Returns the exports */
+/**
+ * Runs the given code string. Code cannot use imports, must be shimmed. Returns the exports
+ */
 export const executeCode = async (
   id: string,
   ctx: TransformPluginContext,

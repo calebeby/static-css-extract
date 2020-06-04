@@ -52,7 +52,10 @@ export const retrieveCSSFromModule = async (
   }
   const cssBlocks = findCSSBlocks(code)
   const cssExportsCode = cssBlocks
-    .map((b) => `_exports.${cssExportPrefix}${b.name} = ${b.name};`)
+    .map((b) => {
+      const value = b.hoist ? code.substring(b.start, b.end) : b.name
+      return `_exports.${cssExportPrefix}${b.name} = ${value}`
+    })
     .join('\n')
   const esmCompat = transformESMToCompat(s.toString(), imports, cssExportsCode)
   const css = await executeAndRetrieveCSS(
@@ -100,21 +103,27 @@ interface CSSBlockLocation {
    * ```
    */
   end: number
+  /** Whether the css block needs to be hoisted to a new variable in the top scope */
+  hoist: boolean
 }
+
+let lastStyle = 0
+const generateName = () => `style${++lastStyle}`
 
 /**
  * Finds all instances of const foo = css`...`
  */
 const findCSSBlocks = (code: string) => {
   const blocks: CSSBlockLocation[] = []
-  // https://regexr.com/558nl
-  const blockStart = /const\s+(\w[\w\d]+)\s*=\s*css\s*`/g
+  // https://regexr.com/562j9
+  const blockStart = /(?:(?:const|let|var)\s+(\w[\w\d]+)\s*=\s*)?css\s*`/g
   let matches: RegExpMatchArray | null
   while ((matches = blockStart.exec(code)) !== null) {
-    const name = matches[1] // first capture group
+    const name = matches[1] || generateName() // first capture group
     const start = code.lastIndexOf('css', blockStart.lastIndex)
     const end = walkToEndOfTemplateExpression(code, blockStart.lastIndex) + 1
-    blocks.push({ name, start, end })
+    const hoist = !matches[1]
+    blocks.push({ name, start, end, hoist })
   }
   return blocks
 }
