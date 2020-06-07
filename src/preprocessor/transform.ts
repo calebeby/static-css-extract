@@ -20,6 +20,7 @@ const transformBlock = (
   startIndex: number,
   currentSelector: string,
 ) => {
+  // selecting either a selector or a }
   // explanation of ([^{};]+[^{};\s]+)  :  Want it to not capture trailing whitespace, so that group must end with at least one non-whitespace
   const re = /(?:(})|(^|[{};\s])(\s*)([^{};]+[^{};\s]+)\s*{)/g
   // TODO: Handle media queries
@@ -44,17 +45,6 @@ const transformBlock = (
     s.move(selectorStart, endOfInner, input.length + 1)
     // jump to after the end of the last block
     re.lastIndex = endOfInner
-  }
-
-  const whitespaceRe = /^\s+(})?/gm
-  whitespaceRe.lastIndex = startIndex
-  while ((match = whitespaceRe.exec(input))) {
-    // if it is right before a closing }, do no whitespace there.
-    if (match[1]) {
-      s.remove(match.index, whitespaceRe.lastIndex - 1)
-    } else {
-      s.overwrite(match.index, whitespaceRe.lastIndex, '  ')
-    }
   }
 
   return endIndex

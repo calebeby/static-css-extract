@@ -31,29 +31,54 @@ test('transform', async () => {
   const result = transform(input).toString()
 
   expect(result).toMatchInlineSnapshot(`
-    "  
+    "
 
     foo .foo.bar .baz {
-      const: hi
-    }
+            const: hi
+          }
     .foo.bar .baz {
-      foo: bar;  
-    }
+          foo: bar;
+        }
     .foo.bar asdfasdfasdfasdf {
-      green: true
-    }
+          green: true
+        }
     .foo.bar {
-      color: rgba(0, 0, 0, 0);
-      background-image: url(\\"\\");  
-      
-    }
+        color: rgba(0, 0, 0, 0);
+        background-image: url(\\"\\");
+
+      }
     .foo.foo2 {
-      color2: rgba(0, 0, 0, 0);
-    }
+        color2: rgba(0, 0, 0, 0);
+      }
     .foo {
-      background: green;  
-      
+      background: green;
+
       color: red;
+    }"
+  `)
+})
+
+test('transform multiple selectors comma separated', async () => {
+  const input = `
+.foo {
+  & bar,
+  & baz {
+    background: green
+  }
+}
+`
+
+  const result = transform(input).toString()
+
+  expect(result).toMatchInlineSnapshot(`
+    "
+
+    .foo bar,
+      .foo baz {
+        background: green
+      }
+    .foo {
+
     }"
   `)
 })
@@ -73,10 +98,12 @@ test('wraps outer', async () => {
       "className": "_53439eb",
       "outputCSS": "
     ._53439eb:hover {
-      background: red;
-    }
+        background: red;
+      }
     ._53439eb {
-      background: green;  
+      
+      background: green;
+
     }",
     }
   `)
