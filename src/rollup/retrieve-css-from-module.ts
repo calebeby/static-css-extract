@@ -7,12 +7,17 @@ import {
   TransformHook,
 } from 'rollup'
 import { executeCode, transformESMToCompat } from './executor'
+import { preprocess } from '../preprocessor'
 
 /** Used for error messages */
 const correctImport =
   'It must be imported as `import {css} from "static-css-extract"`'
 
 const cssExportPrefix = '__STATIC_CSS__'
+
+let stylesheet = ''
+
+export const getStylesheet = () => stylesheet
 
 export const retrieveCSSFromModule = async (
   ctx: TransformPluginContext,
@@ -65,13 +70,14 @@ export const retrieveCSSFromModule = async (
     loaders,
     transformers,
   )
-  let stylesheet = ''
   cssBlocks.forEach(({ name, start, end }) => {
     const result = css[name]
     if (result === undefined)
       ctx.error('Could not statically evaluate css string', start)
     try {
-      s.overwrite(start, end, JSON.stringify(result))
+      const { outputCSS, className } = preprocess(result)
+      stylesheet += outputCSS + '\n'
+      s.overwrite(start, end, JSON.stringify(className))
     } catch (e) {
       console.log(e)
       console.log(id)
@@ -79,7 +85,6 @@ export const retrieveCSSFromModule = async (
       console.log(s.toString())
       throw e
     }
-    stylesheet += result + '\n'
   })
 
   console.timeEnd(label)

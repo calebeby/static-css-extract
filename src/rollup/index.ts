@@ -1,5 +1,8 @@
 import { Plugin, TransformHook, LoadHook } from 'rollup'
-import { retrieveCSSFromModule } from './retrieve-css-from-module'
+import {
+  retrieveCSSFromModule,
+  getStylesheet,
+} from './retrieve-css-from-module'
 
 const name = 'rollup-plugin-static-css-extract'
 
@@ -30,6 +33,13 @@ const plugin = (): Plugin => {
         otherTransformHooks,
         id,
       )
+    },
+    async generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        source: getStylesheet(),
+        fileName: 'stylesheet.css',
+      })
     },
   }
 }

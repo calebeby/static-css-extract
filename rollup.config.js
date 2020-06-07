@@ -1,15 +1,16 @@
 import esbuild from 'rollup-plugin-esbuild'
 import nodeResolve from '@rollup/plugin-node-resolve'
 
-export default {
-  input: ['./src/rollup'],
+/** @type {import('rollup').RollupOptions} */
+const options = {
+  input: { rollup: './src/rollup', preprocessor: './src/preprocessor' },
   plugins: [
     esbuild({ target: 'es2019' }),
     nodeResolve({ extensions: ['.js', '.mjs', '.ts'] }),
   ],
   output: [
-    { file: 'dist/rollup.cjs', format: 'cjs' },
-    { file: 'dist/rollup.mjs', format: 'esm' },
+    { dir: 'dist', format: 'cjs', entryFileNames: '[name].cjs' },
+    { dir: 'dist', format: 'esm', entryFileNames: '[name].mjs' },
   ],
   external: [
     'astring',
@@ -19,5 +20,8 @@ export default {
     'es-module-lexer',
     'fs',
     'util',
+    'crypto',
   ],
 }
+
+export default options
