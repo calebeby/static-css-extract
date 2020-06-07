@@ -6,7 +6,11 @@ import {
   LoadHook,
   TransformHook,
 } from 'rollup'
-import { executeCode, transformESMToCompat } from './executor'
+import {
+  executeCode,
+  transformESMToCompat,
+  clearCache as clearExecutorCache,
+} from './executor'
 import { preprocess } from '../preprocessor'
 
 /** Used for error messages */
@@ -18,6 +22,11 @@ const cssExportPrefix = '__STATIC_CSS__'
 let stylesheet = ''
 
 export const getStylesheet = () => stylesheet
+
+export const clearCache = () => {
+  stylesheet = ''
+  clearExecutorCache()
+}
 
 export const retrieveCSSFromModule = async (
   ctx: TransformPluginContext,

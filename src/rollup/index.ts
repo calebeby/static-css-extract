@@ -2,6 +2,7 @@ import { Plugin, TransformHook, LoadHook } from 'rollup'
 import {
   retrieveCSSFromModule,
   getStylesheet,
+  clearCache,
 } from './retrieve-css-from-module'
 
 const name = 'rollup-plugin-static-css-extract'
@@ -25,6 +26,14 @@ const plugin = (): Plugin => {
         if (plugin.load) otherLoadHooks.push(plugin.load)
       }
     },
+    buildEnd() {
+      this.emitFile({
+        type: 'asset',
+        source: getStylesheet(),
+        fileName: 'stylesheet.css',
+      })
+      clearCache()
+    },
     async transform(code, id) {
       return await retrieveCSSFromModule(
         this,
@@ -33,13 +42,6 @@ const plugin = (): Plugin => {
         otherTransformHooks,
         id,
       )
-    },
-    async generateBundle() {
-      this.emitFile({
-        type: 'asset',
-        source: getStylesheet(),
-        fileName: 'stylesheet.css',
-      })
     },
   }
 }

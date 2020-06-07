@@ -32,6 +32,10 @@ const resolve = async (
 /** Map of absolute module paths to promises to their evaluated results */
 const moduleCache = new Map<string, Promise<Record<string, unknown>>>()
 
+export const clearCache = () => {
+  moduleCache.clear()
+}
+
 const transpileAndEvaluate = async (
   absolutePath: string,
   loaders: LoadHook[],
