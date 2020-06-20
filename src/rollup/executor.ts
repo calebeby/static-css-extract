@@ -221,7 +221,6 @@ export const transformESMToCompat = (
       out.append(`_exports.${r} = ${l};\n`)
     })
   }
-  // for (const exp of nonDefaultExports) out.append(`\n_exports.${exp}=${exp};`)
   // const main = async () => {
   //   const _exports = {}
   //   const {foo} = await _import('bar')
