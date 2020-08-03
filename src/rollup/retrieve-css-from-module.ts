@@ -1,11 +1,6 @@
 import { init, parse, ImportSpecifier } from 'es-module-lexer'
-import MagicString from 'magic-string'
-import {
-  TransformPluginContext,
-  TransformResult,
-  LoadHook,
-  TransformHook,
-} from 'rollup'
+import MagicString, { Bundle as MagicStringBundle } from 'magic-string'
+import { TransformPluginContext, LoadHook, TransformHook } from 'rollup'
 import {
   executeCode,
   transformESMToCompat,
@@ -19,13 +14,16 @@ const correctImport =
 
 const cssExportPrefix = '__STATIC_CSS__'
 
-let stylesheet = ''
-
-export const getStylesheet = () => stylesheet
-
 export const clearCache = () => {
-  stylesheet = ''
   clearExecutorCache()
+}
+
+/**
+ * Returns the path to the generated stylesheet for a given js module
+ * Example: foo.js -> foo.js.virtual.css
+ */
+export const getCssFileNameForJSModule = (jsId: string) => {
+  return jsId + '.virtual.css'
 }
 
 export const retrieveCSSFromModule = async (
@@ -34,7 +32,7 @@ export const retrieveCSSFromModule = async (
   loaders: LoadHook[],
   transformers: TransformHook[],
   id: string,
-): Promise<TransformResult> => {
+) => {
   if (!code.includes('static-css-extract')) return null
   const label = `static-css-extract for ${id}`
   console.time(label)
@@ -79,13 +77,17 @@ export const retrieveCSSFromModule = async (
     loaders,
     transformers,
   )
+  const stylesheet = new MagicStringBundle()
   cssBlocks.forEach(({ name, start, end }) => {
     const result = css[name]
     if (result === undefined)
       ctx.error('Could not statically evaluate css string', start)
     try {
       const { outputCSS, className } = preprocess(result)
-      stylesheet += outputCSS + '\n'
+      stylesheet.addSource({ filename: id })
+      // TODO: How to get source map from original -> evaled???
+      // Maybe... Find each non-embedded "chunk" in the source
+      // And match it up with the first occurrence in the post-eval
       s.overwrite(start, end, JSON.stringify(className))
     } catch (e) {
       console.log(e)
@@ -96,8 +98,14 @@ export const retrieveCSSFromModule = async (
     }
   })
 
+  s.prepend(`import '${getCssFileNameForJSModule(id)}';\n`)
+
   console.timeEnd(label)
-  return { code: s.toString(), map: s.generateMap({ hires: true }) }
+  return {
+    jsCode: s.toString(),
+    jsMap: s.generateMap({ hires: true }),
+    cssCode: stylesheet,
+  }
 }
 
 interface CSSBlockLocation {
