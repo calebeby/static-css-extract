@@ -1,7 +1,9 @@
 import { init, parse } from 'es-module-lexer'
 import { transformESMToCompat } from './executor'
+import { expect } from 'expect'
 
-const transform = async (input: string) => {
+/** @param {string} input */
+const transform = async (input) => {
   await init
   const [imports, exports] = parse(input)
   return transformESMToCompat(input, imports, exports)

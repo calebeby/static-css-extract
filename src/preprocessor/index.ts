@@ -12,3 +12,5 @@ export const preprocess = (originalCSS: string) => {
 
   return { className, outputCSS: outputCSS.toString() }
 }
+
+export { transform }

@@ -1,11 +1,16 @@
 {
   "name": "static-css-extract",
   "main": "./dist/index.cjs",
+  "type": "module",
   "module": "./dist/index.mjs",
   "exports": {
     "./rollup": {
       "require": "./dist/rollup.cjs",
       "import": "./dist/rollup.mjs"
+    },
+    "./preprocessor": {
+      "require": "./dist/preprocessor.cjs",
+      "import": "./dist/preprocessor.mjs"
     }
   },
   "scripts": {
@@ -30,7 +35,9 @@
     "prettier": "2.0.5",
     "rollup": "2.10.9",
     "rollup-plugin-esbuild": "1.4.1",
-    "typescript": "3.9.3"
+    "typescript": "3.9.3",
+    "uvu": "^0.3.1",
+    "watchlist": "^0.2.3"
   },
   "prettier": {
     "semi": false,
