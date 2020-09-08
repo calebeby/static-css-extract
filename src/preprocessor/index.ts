@@ -8,9 +8,9 @@ export const preprocess = (originalCSS: string) => {
   const wrappedCSS = `${selector} {
   ${originalCSS}
 }`
-  const outputCSS = transform(wrappedCSS)
+  const outputCSS = transform(wrappedCSS, selector)
 
-  return { className, outputCSS: outputCSS.toString() }
+  return { className, outputCSS: outputCSS }
 }
 
 export { transform }

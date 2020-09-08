@@ -1,11 +1,11 @@
-import esbuild from 'rollup-plugin-esbuild'
+import babel from '@rollup/plugin-babel'
 import nodeResolve from '@rollup/plugin-node-resolve'
 
 /** @type {import('rollup').RollupOptions} */
 const options = {
   input: { rollup: './src/rollup', preprocessor: './src/preprocessor' },
   plugins: [
-    esbuild({ target: 'es2019' }),
+    babel({ babelHelpers: 'bundled', extensions: ['.js', '.ts'] }),
     nodeResolve({ extensions: ['.js', '.mjs', '.ts'] }),
   ],
   output: [
