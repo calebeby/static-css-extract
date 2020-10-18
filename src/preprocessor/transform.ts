@@ -1,5 +1,9 @@
 import MagicString from 'magic-string'
 
+// TODO: check out https://github.com/cristianbote/goober/blob/master/src/core/parse.js
+// it is small and fast and doing a lot of the same things. 
+// Probably no source maps though
+
 export const transform = (input: string, selectorPrefix = '') => {
   const parsed = parse(input, 0, [], [])
   console.log(parsed)
