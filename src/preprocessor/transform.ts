@@ -1,55 +1,70 @@
-import MagicString from 'magic-string'
+const tokenGroups = [
+  /^\s+/, // whitespace
+  /^@?[a-zA-Z-][\w-]*/, // ident or at-rule
+  /^\w+/, // word
+  /^\/\*.*?\*\//, // comment
+  /^".*?[^\\]"+/, // string
+  /^'.*?[^\\]'+/, // string
+]
 
-// TODO: check out https://github.com/cristianbote/goober/blob/master/src/core/parse.js
-// it is small and fast and doing a lot of the same things. 
-// Probably no source maps though
+export const tokenize = (input: string) => {
+  const tokens: string[] = []
+  let currentToken = ''
+  while (input !== '') {
+    for (const tokenGroup of tokenGroups) {
+      const res = tokenGroup.exec(input)
+      if (res) {
+        tokens.push(res[0])
+        input = input.substring(tokenGroup.lastIndex + res[0].length)
+      }
+    }
 
-export const transform = (input: string, selectorPrefix = '') => {
-  const parsed = parse(input, 0, [], [])
-  console.log(parsed)
+    tokens.push(input[0])
+    input = input.substring(1)
+  }
+  return tokens
 }
 
-interface Location {
-  startIndex: number
-  endIndex: number
+interface TreeItem {
+  type: string
+  start: number
 }
 
-interface AtRule extends Location {
-  text: string
+interface Declaration extends TreeItem {
+  type: 'declaration'
 }
 
-interface Selector extends Location {
-  text: string
-  startIndex: number
+interface Block extends TreeItem {
+  type: 'block'
+  contents: (Declaration | AtRule | RuleSet)[]
 }
 
-const enum NodeType {
-  BlockNode,
-  CommentNode,
-  RuleNode,
+interface AtRule extends TreeItem {
+  type: 'at-rule'
+  value?: Block
 }
 
-interface Node extends Location {
-  type: NodeType
+interface RuleSet extends TreeItem {
+  type: 'ruleset'
 }
 
-interface CommentNode extends Node {
-  type: NodeType.CommentNode
-}
+const BaseMode = 0
 
-interface BlockNode extends Node {
-  type: NodeType.BlockNode
-  atRuleStack: AtRule[]
-  selectorStack: Selector[]
-  contents: Node[]
-}
-
-interface RuleNode extends Node {
-  type: NodeType.RuleNode
-}
-
-const debug = (input: string, node: Node) => {
-  console.log(JSON.stringify(input.substring(node.startIndex, node.endIndex)))
+export const parse = (input: string) => {
+  const tree: TreeItem[] = []
+  const tokens = tokenize(input)
+  let i = 0,
+    len = tokens.length
+  let charIndex = 0
+  let mode = BaseMode
+  while (i < len) {
+    const token = tokens[i]
+    if (token[0] === '@') {
+    }
+    charIndex += token.length
+    i++
+  }
+  return tree
 }
 
 const createLocationError = (
@@ -87,84 +102,4 @@ const createLocationError = (
   })
 
   return new Error(`Error: ${message}${codeFrame}\n`)
-}
-
-/**
- * @param startIndex The character index to start parsing at
- */
-const parse = (
-  input: string,
-  startIndex: number,
-  atRuleStack: AtRule[],
-  selectorStack: Selector[],
-) => {
-  let currentCharIndex = startIndex - 1
-  const contents: Node[] = []
-  /** Finds the character index of the next instance of the character */
-  const findNext = (text: string) => {
-    let searchIndex = currentCharIndex
-    while (searchIndex < input.length) {
-      if (text === input.substring(searchIndex, searchIndex + text.length)) {
-        // walk past the end of the found string
-        return searchIndex
-      }
-      searchIndex++
-    }
-  }
-  while (currentCharIndex < input.length) {
-    currentCharIndex++
-    const currentChar = input[currentCharIndex]
-    if (currentChar === '/') {
-      // Handle comments with "/*    */"
-      if (input[currentCharIndex + 1] === '*') {
-        currentCharIndex += 2
-        const end = findNext('*/')
-        if (end === undefined)
-          throw createLocationError(
-            `Expected to find closing comment (*/) to match`,
-            input,
-            currentCharIndex - 2,
-          )
-        const commentNode: CommentNode = {
-          type: NodeType.CommentNode,
-          startIndex: currentCharIndex,
-          endIndex: end + 2,
-        }
-        contents.push(commentNode)
-        currentCharIndex = end + 2 // go past the end of the comment
-      }
-      // handle comments with "//"
-      else if (input[currentCharIndex + 1] === '/') {
-        currentCharIndex += 2
-        const newLine = findNext('\n')
-        const commentEnd = newLine
-          ? newLine - 1 // -1 to exclude \n
-          : input.length - 1
-        const commentNode: CommentNode = {
-          type: NodeType.CommentNode,
-          startIndex: currentCharIndex,
-          endIndex: commentEnd,
-        }
-        contents.push(commentNode)
-        currentCharIndex = commentEnd + 1
-      }
-      continue
-    } else if (/\s/.test(currentChar)) {
-      // whitespace, ignore
-      continue
-    } else if (currentChar === '@') {
-      // At-selector
-      throw new Error('TODO at selectors')
-    } else if (currentChar === '}') {
-      // Closing block
-      break
-    } else {
-      // Scan to see if it is either a selector or a property
-    }
-  }
-  const result: BlockNode = {
-    contents,
-  }
-
-  return result
 }
