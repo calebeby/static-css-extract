@@ -1,12 +1,7 @@
-import { init, parse, ImportSpecifier } from 'es-module-lexer'
-import MagicString, { Bundle as MagicStringBundle } from 'magic-string'
-import { TransformPluginContext, LoadHook, TransformHook } from 'rollup'
-import {
-  executeCode,
-  transformESMToCompat,
-  clearCache as clearExecutorCache,
-} from './executor'
-import { preprocess } from '../preprocessor'
+import { ImportSpecifier, init, parse } from 'es-module-lexer'
+import MagicString from 'magic-string'
+import { LoadHook, TransformHook, TransformPluginContext } from 'rollup'
+import vm from 'vm'
 
 /** Used for error messages */
 const correctImport =
@@ -14,9 +9,7 @@ const correctImport =
 
 const cssExportPrefix = '__STATIC_CSS__'
 
-export const clearCache = () => {
-  clearExecutorCache()
-}
+export const clearCache = () => {}
 
 /**
  * Returns the path to the generated stylesheet for a given js module
@@ -34,10 +27,8 @@ export const retrieveCSSFromModule = async (
   id: string,
 ) => {
   if (!code.includes('static-css-extract')) return null
-  const label = `static-css-extract for ${id}`
-  console.time(label)
   await init
-  const s = new MagicString(code)
+  const outputString = new MagicString(code)
 
   const [imports] = parse(code, id)
 
@@ -45,67 +36,80 @@ export const retrieveCSSFromModule = async (
   const importToStaticCSSExtractIndex = imports.findIndex((i) => {
     return checkImport(i, code, ctx)
   })
+
   if (importToStaticCSSExtractIndex === undefined) return null
   const i = imports[importToStaticCSSExtractIndex]
   // Remove the import
-  s.remove(i.ss, i.se)
+  outputString.remove(i.ss, i.se)
   // Remove it from imports array
   imports.splice(importToStaticCSSExtractIndex, 1)
-  // Update remaining imports indexes
-  const lengthOfRemovedImport = i.se - i.ss
-  for (const imp of imports) {
-    // If this import ends before the removed one begins, no need to offset
-    if (imp.se < i.ss) continue
-    // Offset by the length of the removed import
-    imp.se -= lengthOfRemovedImport
-    imp.ss -= lengthOfRemovedImport
-    imp.e -= lengthOfRemovedImport
-    imp.s -= lengthOfRemovedImport
-  }
+  /* // Update remaining imports indexes */
+  /* const lengthOfRemovedImport = i.se - i.ss */
+
+  /* for (const imp of imports) { */
+  /*   // If this import ends before the removed one begins, no need to offset */
+  /*   if (imp.se < i.ss) continue */
+  /*   // Offset by the length of the removed import */
+  /*   imp.se -= lengthOfRemovedImport */
+  /*   imp.ss -= lengthOfRemovedImport */
+  /*   imp.e -= lengthOfRemovedImport */
+  /*   imp.s -= lengthOfRemovedImport */
+  /*   // dynamic import */
+  /*   if (imp.d > -1) imp.d -= lengthOfRemovedImport */
+  /* } */
+
   const cssBlocks = findCSSBlocks(code)
   const cssExportsCode = cssBlocks
     .map((b) => {
       const value = b.hoist ? code.substring(b.start, b.end) : b.name
-      return `_exports.${cssExportPrefix}${b.name} = ${value}`
+      return `extracted_css.${b.name} = ${value}`
     })
     .join('\n')
-  const esmCompat = transformESMToCompat(s.toString(), imports, cssExportsCode)
-  const css = await executeAndRetrieveCSS(
-    id,
-    ctx,
-    esmCompat,
-    loaders,
-    transformers,
-  )
-  const stylesheet = new MagicStringBundle()
-  cssBlocks.forEach(({ name, start, end }) => {
-    const result = css[name]
-    if (result === undefined)
-      ctx.error('Could not statically evaluate css string', start)
-    try {
-      const { outputCSS, className } = preprocess(result)
-      stylesheet.addSource({ filename: id })
-      // TODO: How to get source map from original -> evaled???
-      // Maybe... Find each non-embedded "chunk" in the source
-      // And match it up with the first occurrence in the post-eval
-      s.overwrite(start, end, JSON.stringify(className))
-    } catch (e) {
-      console.log(e)
-      console.log(id)
-      console.log({ name, start, end })
-      console.log(s.toString())
-      throw e
-    }
-  })
 
-  s.prepend(`import '${getCssFileNameForJSModule(id)}';\n`)
+  // clone so that we can make temporary modifications just for evaluation purposes
+  const evalString = outputString.clone()
 
-  console.timeEnd(label)
-  return {
-    jsCode: s.toString(),
-    jsMap: s.generateMap({ hires: true }),
-    cssCode: stylesheet,
+  const importedPieces = new Map<string, Set<string>>()
+
+  for (const imp of imports) {
+    // make sure it is static import
+    if (imp.d !== -1) continue
+
+    const source = code.substring(imp.s, imp.e)
+    const allSpecifiers = code
+      .substring(imp.ss + 'import'.length, imp.s)
+      .replace(/\s*(?:from)?\s*['"]$/, '')
+      .trim()
+
+    const namedSpecifiers = (allSpecifiers.match(/\{(.*)\}/)?.[1] || '')
+      .split(',')
+      .map((specifier) => specifier.trim())
+      .filter(Boolean)
+    evalString.remove(imp.ss, imp.se)
   }
+
+  console.log('evaluating:', evalString.toString())
+
+  const entryModule = new vm.SourceTextModule(evalString.toString())
+  async function linker(specifier, referencingModule) {
+    return new vm.SourceTextModule('export {}')
+  }
+  await entryModule.link(linker).catch((e) => console.error('linking error', e))
+  await entryModule
+    .evaluate()
+    .catch((e) => console.error('evaluation error', e))
+
+  outputString.prepend(`import '${getCssFileNameForJSModule(id)}';\n`)
+
+  /* cssBlocks.forEach((b, i) => { */
+  /*   s.overwrite(b.start, b.end, `block${i}`) */
+  /* }) */
+
+  /* return { */
+  /*   jsCode: s.toString(), */
+  /*   jsMap: s.generateMap({ hires: true }), */
+  /*   cssCode: stylesheet, */
+  /* } */
 }
 
 interface CSSBlockLocation {
@@ -170,35 +174,6 @@ const walkToEndOfTemplateExpression = (
   return code.length - 1
 }
 
-const executeAndRetrieveCSS = async (
-  id: string,
-  ctx: TransformPluginContext,
-  code: string,
-  loaders: LoadHook[],
-  transformers: TransformHook[],
-) => {
-  const moduleExports = await executeCode(
-    id,
-    ctx,
-    code,
-    loaders,
-    transformers,
-    { css: taggedTemplateNoop },
-  )
-
-  return Object.fromEntries(
-    Object.entries(moduleExports)
-      .filter(
-        ([key, value]) =>
-          key.startsWith(cssExportPrefix) && typeof value === 'string',
-      )
-      .map(
-        ([key, value]) =>
-          [key.replace(cssExportPrefix, ''), value] as [string, string],
-      ),
-  )
-}
-
 /**
  * Checks that an import is a correct import: import {css} from "static-css-extract"
  * Returns true if it is correct. Returns false if it imports from somewhere else
@@ -256,12 +231,4 @@ const checkImport = (
   }
 
   return true
-}
-
-function taggedTemplateNoop(strings: string[], ...keys: string[]) {
-  const lastIndex = strings.length - 1
-  return (
-    strings.slice(0, lastIndex).reduce((p, s, i) => p + s + keys[i], '') +
-    strings[lastIndex]
-  )
 }

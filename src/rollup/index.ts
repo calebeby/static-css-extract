@@ -40,7 +40,7 @@ const plugin = (): Plugin => {
       return virtualStylesheetMap.get(id) || null
     },
     async transform(code, id) {
-      console.log('transform', id)
+      /* console.log('transform', id) */
       const result = await retrieveCSSFromModule(
         this,
         code,
@@ -48,12 +48,17 @@ const plugin = (): Plugin => {
         otherTransformHooks,
         id,
       )
+      if (result === undefined) return null
 
-      if (!result) return null
+      /* console.log('result', result) */
 
-      virtualStylesheetMap.set(getCssFileNameForJSModule(id), result.css)
+      return null
 
-      return result.js
+      /* if (!result) return null */
+
+      /* virtualStylesheetMap.set(getCssFileNameForJSModule(id), result.css) */
+
+      /* return result.js */
     },
   }
 }
